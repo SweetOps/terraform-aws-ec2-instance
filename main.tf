@@ -1,10 +1,9 @@
 locals {
   instance_count       = "${var.instance_enabled == "true" ? 1 : 0}"
-  security_group_count = "${var.create_default_security_group == "true" ? 1 : 0}"
+  security_group_count = "${var.create_default_security_group == "true" && var.instance_enabled == "true" ? 1 : 0}"
   region               = "${var.region != "" ? var.region : data.aws_region.default.name}"
   root_iops            = "${var.root_volume_type == "io1" ? var.root_iops : "0"}"
   ebs_iops             = "${var.ebs_volume_type == "io1" ? var.ebs_iops : "0"}"
-  availability_zone    = "${var.availability_zone != "" ? var.availability_zone : data.aws_subnet.default.availability_zone}"
   ami                  = "${var.ami != "" ? var.ami : data.aws_ami.default.image_id}"
   root_volume_type     = "${var.root_volume_type != "" ? var.root_volume_type : data.aws_ami.info.root_device_type}"
   public_dns           = "${var.associate_public_ip_address == "true" && var.assign_eip_address == "true" && var.instance_enabled == "true" ?  data.null_data_source.eip.outputs["public_dns"] : join("", aws_instance.default.*.public_dns)}"
@@ -15,7 +14,8 @@ data "aws_caller_identity" "default" {}
 data "aws_region" "default" {}
 
 data "aws_subnet" "default" {
-  id = "${var.subnet}"
+  count = "${local.instance_count}"
+  id    = "${var.subnet}"
 }
 
 data "aws_iam_policy_document" "default" {
@@ -59,7 +59,7 @@ data "aws_ami" "info" {
 }
 
 module "label" {
-  source     = "git::https://github.com/cloudposse/terraform-null-label.git?ref=tags/0.3.5"
+  source     = "git::https://github.com/SweetOps/terraform-null-label.git?ref=tags/0.5.4"
   namespace  = "${var.namespace}"
   stage      = "${var.stage}"
   name       = "${var.name}"
@@ -85,7 +85,6 @@ resource "aws_iam_role" "default" {
 resource "aws_instance" "default" {
   count                       = "${local.instance_count}"
   ami                         = "${local.ami}"
-  availability_zone           = "${local.availability_zone}"
   instance_type               = "${var.instance_type}"
   ebs_optimized               = "${var.ebs_optimized}"
   disable_api_termination     = "${var.disable_api_termination}"
@@ -111,7 +110,8 @@ resource "aws_instance" "default" {
     delete_on_termination = "${var.delete_on_termination}"
   }
 
-  tags = "${module.label.tags}"
+  tags        = "${module.label.tags}"
+  volume_tags = "${module.label.tags}"
 }
 
 resource "aws_eip" "default" {
