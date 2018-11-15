@@ -76,11 +76,6 @@ variable "region" {
   default     = ""
 }
 
-variable "availability_zone" {
-  description = "Availability Zone the instance is launched in. If not set, will be launched in the first AZ of the region"
-  default     = ""
-}
-
 variable "ami" {
   description = "The AMI to use for the instance. By default it is the AMI provided by Amazon with Ubuntu 16.04"
   default     = ""
